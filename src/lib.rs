@@ -1,8 +1,7 @@
 use std::fs::File;
 use std::sync::Arc;
-use std::io::{BufReader, Read};
+use std::io::BufReader;
 use std::time::{Duration, UNIX_EPOCH};
-use serde::Deserialize;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use log::info;
@@ -16,11 +15,11 @@ pub struct ConfigMonitor<T>{
 }
 
 impl<T: DeserializeOwned + Send + 'static> ConfigMonitor<T> {
-    pub fn new<S: AsRef<str>>(filename: S, recheck_delay_seconds: Option<u64>) -> Self {
-        let data = Self::load_file(filename.as_ref());
+    pub fn new(filename: &str, recheck_delay_seconds: Option<u64>) -> Self {
+        let data = Self::load_file(filename);
 
         Self {
-            filename: filename.as_ref().to_string(),
+            filename: filename.to_string(),
             recheck_delay_seconds: recheck_delay_seconds.unwrap_or(300),
             data: Arc::new(Mutex::new(data))
         }
@@ -54,7 +53,7 @@ impl<T: DeserializeOwned + Send + 'static> ConfigMonitor<T> {
                     .unwrap()
                     .as_secs();
                 if file_last_modified != file_recent_modified {
-                    info!("Found file changes, updating config");
+                    info!("Found file changes, updating config...");
                     file_last_modified = file_recent_modified;
                     let mut lock = c_config.lock().await;
                     let data = Self::load_file(&self.filename);
@@ -65,11 +64,9 @@ impl<T: DeserializeOwned + Send + 'static> ConfigMonitor<T> {
         })
     }
 
-    fn load_file<S: AsRef<str>>(filename: S) -> T {
-        let file = File::open(filename.as_ref()).unwrap();
-        let mut reader = BufReader::new(file);
-        // let mut buffer = String::new();
-        // reader.read_to_string(&mut buffer);
+    fn load_file(filename: &str) -> T {
+        let file = File::open(filename).unwrap();
+        let reader = BufReader::new(file);
         serde_json::from_reader(reader).unwrap()
     }
 }
