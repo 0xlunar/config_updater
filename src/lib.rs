@@ -30,35 +30,21 @@ impl<T: DeserializeOwned + Send + 'static> ConfigMonitor<T> {
     }
 
     pub fn monitor(self) -> JoinHandle<()> {
-        let c_config = Arc::clone(&self.data);
+        let config_data = Arc::clone(&self.data);
         tokio::task::spawn(async move {
-            let file = File::open(&self.filename).unwrap();
-            let mut file_last_modified = file
-                .metadata()
-                .unwrap()
-                .modified()
-                .unwrap()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs();
+            let mut file_last_modified = self.file_last_modified();
 
             loop {
-                let file = File::open(&self.filename).unwrap();
-                let file_recent_modified = file
-                    .metadata()
-                    .unwrap()
-                    .modified()
-                    .unwrap()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs();
+                let file_recent_modified = self.file_last_modified();
+
                 if file_last_modified != file_recent_modified {
                     info!("Found file changes, updating config...");
                     file_last_modified = file_recent_modified;
-                    let mut lock = c_config.lock().await;
                     let data = Self::load_file(&self.filename);
+                    let mut lock = config_data.lock().await;
                     *lock = data;
                 }
+
                 sleep_until(Instant::now() + Duration::from_secs(self.recheck_delay_seconds)).await
             }
         })
@@ -68,5 +54,17 @@ impl<T: DeserializeOwned + Send + 'static> ConfigMonitor<T> {
         let file = File::open(filename).unwrap();
         let reader = BufReader::new(file);
         serde_json::from_reader(reader).unwrap()
+    }
+
+    fn file_last_modified(&self) -> u64 {
+        let file = File::open(&self.filename).unwrap();
+        file
+            .metadata()
+            .unwrap()
+            .modified()
+            .unwrap()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
     }
 }
