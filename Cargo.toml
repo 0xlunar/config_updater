@@ -3,7 +3,7 @@ name = "config_updater"
 version = "0.1.0"
 edition = "2021"
 description = "Automatically detect file changes and update accordingly"
-license = "GPL-3"
+license = "GPL-3.0-only"
 repository = "https://github.com/0xlunar/config_updater"
 
 #[features]
