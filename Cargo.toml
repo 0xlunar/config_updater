@@ -2,6 +2,8 @@
 name = "config_updater"
 version = "0.1.0"
 edition = "2021"
+description = "Automatically detect file changes and update accordingly"
+repository = "https://github.com/0xlunar/config_updater"
 
 #[features]
 #default = ["std"]
